@@ -19,7 +19,7 @@ class DataSource {
         if (settings.source) {
             if (settings.source.type) {
                 let FileJs = require("./filejs/" + settings.source.type);
-                this.#file = new FileJs();
+                this.#file = new FileJs(settings);
             }
         }
 
