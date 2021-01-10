@@ -11,11 +11,11 @@ class Schema {
         this.#schema = schema;
     }
 
-    getId() {
-        return this.#id;
+    get() {
+        return this.#schema.getSchema(this.#id);
     }
 
-    get(id) {
+    getSchema(id) {
         return this.#schema.getSchema(id);
     }
 
@@ -33,7 +33,7 @@ module.exports = class {
         this.#validator = new Validator();
     }
 
-    load(filename) {
+    open(filename) {
         let id = this.resolve(filename);
         return new Schema(id, this);
     }

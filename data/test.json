@@ -1,0 +1,16 @@
+{
+  "item": [
+    {
+      "id": "item1",
+      "packId": "pack1"
+    },
+    {
+      "id": "item2",
+      "packId": "pack1"
+    },
+    {
+      "id": "item3",
+      "packId": "pack1"
+    }
+  ]
+}

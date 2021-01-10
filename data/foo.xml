@@ -1,0 +1,10 @@
+<root>
+    <item>
+        <id>aa</id>
+        <pack>bb</pack>
+    </item>
+    <item>
+        <id>bb</id>
+        <pack>cc</pack>
+    </item>
+</root>

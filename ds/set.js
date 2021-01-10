@@ -1,11 +1,13 @@
 module.exports = {
-    data: [
-        { id: "set1" },
-        { id: "set2", setId:"set1" },
-        { id: "set3", setId:"set1" },
-        { id: "set4", setId:"set1" },
-        { id: "set5", setId:"set1" },
-    ],
+    file: {
+        type: "excel",
+        items: [
+            {
+                path: "../excel/set*.xlsx",
+                sheet: "set"
+            },
+        ]
+    },
     schema: "../sch/set.js",
     uniques: [
         ["id"]

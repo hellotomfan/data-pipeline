@@ -1,0 +1,7 @@
+import "awesome.proto";
+
+syntax = "proto3";
+
+message Test {
+    map<string, AwesomeMessage> message = 1; // becomes awesomeField
+}

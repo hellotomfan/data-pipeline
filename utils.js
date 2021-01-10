@@ -33,7 +33,7 @@ module.exports.getValues = (data, keys) => {
         return [value];
     }
     if (!module.exports.isArray(value)) {
-        return this.getValues(value, keys);
+        return module.exports.getValues(value, keys);
     } else {
         let result = [];
         value.forEach(v => {
@@ -49,13 +49,37 @@ module.exports.getValues = (data, keys) => {
     }
 }
 
+module.exports.getValue = (data, keys) => {
+    let key = keys.shift();
+    let value = data[key];
+
+    if (keys.length === 0) {
+        return value;
+    }
+    if (module.exports.isArray(value)) {
+        throw 'array not be supported';
+    }
+    return module.exports.getValue(value, keys);
+}
+
+module.exports.setValue = (root, keys, data) => {
+    let key = keys.shift();
+    let value = root[key];
+    if (keys.length === 0) {
+        root[key] = data;
+    } else if (value === undefined) {
+        value = root[key] = {}
+    }
+    return module.exports.setValue(value, keys, data);
+}
+
 module.exports.getAllFiles = (baseDir, files) => {
     let allFiles = [];
     files.forEach(file => {
-        let files = glob.sync(baseDir + path.sep + file.name, {});
-        for (let fileName of files) {
+        let files = glob.sync(baseDir + path.sep + file.path, {});
+        for (let path of files) {
             let newFile = {...file}
-            newFile.name = fileName;
+            newFile.path = path;
             allFiles.push(newFile)
         }
     })

@@ -11,15 +11,16 @@ class DataSource {
     #data;
     #file;
 
-    constructor(settings) {
+    constructor(baseDir, settings) {
         this.#settings = settings;
         this.#indexes = {};
         this.#data = new Map();
 
-        if (settings.source) {
-            if (settings.source.type) {
-                let FileJs = require("./filejs/" + settings.source.type);
-                this.#file = new FileJs(settings);
+        if (settings.file) {
+            if (settings.file.type) {
+                //console.log(__dirname);
+                let FileJs = require(__dirname + "/filejs/" + settings.file.type);
+                this.#file = new FileJs(baseDir, settings);
             }
         }
 
@@ -194,82 +195,46 @@ class DataSource {
         return this.#data.get(id);
     }
 
-    create(object) {
-        //console.log(object);
-        let rs = this.#settings.schema.validate(object);
+    create(data) {
+        //console.log(data);
+        let rs = this.#settings.schema.validate(data.o);
         if (rs.errors.length) {
             throw rs.errors;
         }
-        this.#updateIndex(object, true);
-        let id = Utils.generateId(object);
-        this.#data.set(id, object);
+        this.#updateIndex(data.o, true);
+        let id = Utils.generateId(data.o);
+        this.#data.set(id, data);
     }
 
     remove(id) {
-        let object = this.#data.get(id);
-        if (object) {
-            this.#updateIndex(object, false);
+        let data = this.#data.get(id);
+        if (data) {
+            this.#updateIndex(data.o, false);
             this.#data.delete(id);
         }
     }
 
-    update(id, object) {
-        let old = this.#data.get(id);
-        if (old) {
+    update(id, newData) {
+        let oldData = this.#data.get(id);
+        if (oldData) {
             this.remove(id);
-            this.create(object);
+            this.create(newData);
         }
     }
 
     async load() {
         let settings = this.#settings;
-        settings.data.forEach(data => {
-            this.create(data);
-        })
         if (this.#file) {
-            //TODO
-            this.#data = this.#file.load();
-
-            /*
-            let FileJs = require("./filejs/" + settings.source.type);
-            let fileJs = new FileJs();
-            let allFiles = [];
-            for (const x of settings.source.files) {
-                let files = glob.sync(x.name, {});
-                for (let file of files) {
-                    allFiles.push({
-                        file: file,
-                        sheet: x.sheet
-                    })
-                }
-            }
-
-             */
-
-            //let allData = [];
-            //for (const x of allFiles) {
-            //    try {
-            //        allData.push(await fileJs.load(x));
-            //    } catch (ex) {
-            //        console.log("can not open ", x);
-            //    }
-            //}
-
-
-            //let allData = await Promise.all(allFiles.map(async x => {
-            //    try {
-            //        return await fileJs.load(x);
-            //    } catch (ex) {
-            //        console.log("can not open ", x);
-            //    }
-            //}));
-            //console.log(allData);
+            let data = await this.#file.load();
+            data.forEach(d => {
+                this.create(d);
+            });
         }
     }
 
     async save() {
         if (this.#file) {
-            this.#file.save(this.#data);
+            await this.#file.save(this.#data);
         }
     }
 }
@@ -281,14 +246,22 @@ module.exports = class {
         this.#schema = new Schema();
     }
 
+    async open(filename) {
+        return await this.#open(filename, false);
+    }
+
     async load(filename) {
+        return await this.#open(filename, true);
+    }
+
+    async #open(filename, load) {
         let lstat = fs.lstatSync(filename)
         if (!lstat.isDirectory()) {
-            return await this.#load(filename);
+            return await this.#openFile(filename, load);
         } else {
             let files = fs.readdirSync(filename);
             for (const file of files) {
-                await this.#load(filename + path.sep + file);
+                await this.#openFile(filename + path.sep + file, load);
             }
         }
     }
@@ -301,7 +274,7 @@ module.exports = class {
         return path.parse(path.basename(filename)).name;
     }
 
-    async #load(filename) {
+    async #openFile(filename, load) {
         if (!path.isAbsolute(filename)) {
             filename = process.cwd() + path.sep + filename;
         }
@@ -310,15 +283,15 @@ module.exports = class {
         let id = this.#getId(filename);
         if (!this.#dds[id]) {
             let settings = require(filename);
-            this.#dds[id] = new DataSource(settings);
-            settings.schema = this.#schema.load(dirname + path.sep + settings.schema);
+            settings.schema = this.#schema.open(dirname + path.sep + settings.schema);
+            this.#dds[id] = new DataSource(dirname, settings);
             if (settings.relations) {
                 for (const keys of settings.relations) {
                     if (!keys.reference.ds) {
                         keys.reference.ds = this.#dds[id];
                     } else {
                         let filename = dirname + path.sep + keys.reference.ds;
-                        keys.reference.ds = await this.#load(filename);
+                        keys.reference.ds = await this.#openFile(filename, load);
                     }
                     if (!Utils.isArray(keys.reference.keys)) {
                         keys.reference.keys = [keys.reference.keys];
@@ -326,7 +299,9 @@ module.exports = class {
                     keys.reference.ds.createIndex(keys.reference.keys, false);
                 }
             }
-            await this.#dds[id].load();
+            if (load) {
+                await this.#dds[id].load();
+            }
         }
         return this.#dds[id];
     }
@@ -335,15 +310,21 @@ module.exports = class {
 
 
 
-//async function main() {
-//    let dds = new DDS;
-//    let itemDs = await dds.load("ds/item.js");
-//}
+async function main() {
+    let dds = new module.exports();
+    let setDs = await dds.load("ds/item.js");
+    console.log(setDs.getData())
+    //packDs.load();
+    //packDs.create({id: "abc2", name: "abc", setId: "set1"});
+    //console.log(packDs.getData());
+    //await packDs.save()
+    //await itemDs.load();
+}
 
 
-//main().then(x => {
-//    console.log("done");
-//})
+main().then(x => {
+    console.log("done");
+})
 
 //let cardPacksDs = dds.load("ds/set.js");
 //console.log(cardPacksDs.getData());
